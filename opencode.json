@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "plans/workflow/plan-generation.md",
+    "task-manager/workflow/task-execution.md",
+    "db-architect/workflows/slow-query.md",
+    "db-engineer/workflow/db-execution.md",
+    "golang-architect/workflow/architecture-design.md",
+    "golang-engineer/workfllow/implementation-flow.md"
+  ],
+  "default_agent": "plans",
+  "skills": {
+    "paths": [".opencode/skill"]
+  }
+}

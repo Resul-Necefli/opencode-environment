@@ -2,7 +2,24 @@
 
 ## What this repo is
 
-A multi-agent orchestration environment for the **opencode** tool — NOT a traditional Go application. The `go.mod` and `main.go` are stubs. The real substance is the agent definitions, system prompts, skills, and workflows in the six agent directories.
+A multi-agent orchestration environment for the **opencode** tool. The `go.mod` and `main.go` are stubs. The real substance is the agent definitions, skills, and workflows.
+
+## OpenCode discovery structure
+
+Agents and skills are registered via the standard OpenCode discovery paths. **Do not** put agent configs in the root-level `<name>/<name>.md` directories — OpenCode will not find them there.
+
+### Canonical paths
+
+| What | Path |
+|---|---|
+| Project config | `opencode.json` |
+| Agent definitions | `.opencode/agent/<name>.md` |
+| Skills | `.opencode/skill/<name>/SKILL.md` |
+| Global instructions | `opencode.json` → `instructions` array |
+
+### Original directories (kept as reference)
+
+The root-level `plans/`, `task-manager/`, `db-architect/`, `db-engineer/`, `golang-architect/`, `golang-engineer/` directories are **reference only** — they contain the raw prompts, skills, and workflows that were migrated into `.opencode/`. Do not edit them expecting OpenCode to pick up changes.
 
 ## Agent pipeline
 
@@ -14,30 +31,41 @@ Business Request → plans → task-manager → {db-architect, golang-architect}
 - **plans** (primary, `gpt-5`): converts requests into structured plans
 - **task-manager** (primary, `gpt-5`): breaks plans into tasks, dispatches to agents
 - **db-architect** (subagent, `opencode/gemini-3.1-pro`): designs DB architecture
-- **db-engineer** (execution-agent, `gpt-5`): implements `db-architect` output as SQL
+- **db-engineer** (subagent, `gpt-5`): implements `db-architect` output as SQL
 - **golang-architect** (subagent, `gpt-5`): designs Go backend architecture
-- **golang-engineer** (execution-agent, `gpt-5`): implements `golang-architect` output as Go code
+- **golang-engineer** (subagent, `gpt-5`): implements `golang-architect` output as Go code
 
 Dependency chains enforced by task-manager: architect → engineer (never the reverse).
 
-## Critical path quirks — typos and mismatches
+## How edits propagate
 
-These are real directory/file names. Do NOT "fix" them without updating all `{file:...}` references in agent configs and system prompts.
+- **Agent prompts**: edit `.opencode/agent/<name>.md` (the file body IS the prompt)
+- **Skills**: edit `.opencode/skill/<name>/SKILL.md`
+- **Workflows**: referenced in `opencode.json` → `instructions` array; edit the `workflow/` files in the original directories
+- **After any config change**: quit and restart `opencode` for changes to take effect
 
-- **`skils/`** — every agent directory uses `skils/` (not `skills/`). All `{file:skills/...}` references in prompts point to this misspelled directory.
-- **`golang-engineer/workfllow/`** — triple L, not a typo you should silently correct.
-- **`db-architect`** uses `prompts/` (plural) and `workflows/` (plural); other agents use `prompt/` and `workflow/` (singular). `task-manager` uses `prompts/` (plural) + `workflow/` (singular).
-- **`golang-engineer/prompt/golang-architect.system.md`** — file is misnamed after the architect role, but contains the engineer system prompt.
+## Permissions
 
-## Missing but referenced
-
-- `plans/skils/` system prompt references `{file:skills/planning.md}` but only `business-analysis.md` and `system-thinking.md` exist.
+- **plans**: `edit: allow, bash: allow`
+- **task-manager**: `edit: allow, bash: allow`
+- **db-architect**: `question: allow, task: deny, read: allow, edit: deny, bash: deny`
+- **db-engineer**: `edit: allow, bash: psql * allow / * ask`
+- **golang-architect**: `edit: ask, bash: ask`
+- **golang-engineer**: `edit: allow, bash: allow`
 
 ## No build/test/lint commands
 
-No Makefile, no CI, no test files, no linter config, no `go.sum`. The Go module has zero external dependencies. `go run main.go` prints `hello agent` and nothing else.
+No Makefile, no CI, no test files, no linter config, no `go.sum`. `go run main.go` prints `hello agent` and nothing else.
 
-## Permission models differ
+## Original directory quirks (reference only)
 
-- `db-architect`: granular (`question:allow`, `task:deny`, `file_read:allow`, `file_write:deny`)
-- All others: single-string (`workspace-write`, `db-write`, `backend-design`, `code-write`)
+These are real directory/file names in the reference directories. Do NOT "fix" them.
+
+- **`skils/`** — misspelled, used consistently across all agent dirs
+- **`golang-engineer/workfllow/`** — triple L
+- **`db-architect`** uses `prompts/` (plural) and `workflows/` (plural); other agents vary
+- **`golang-engineer/prompt/golang-architect.system.md`** — misnamed after the architect role
+
+## Missing but referenced
+
+- `plans/skils/` system prompt references `{file:skills/planning.md}` but only `business-analysis.md` and `system-thinking.md` exist. This is in the original reference dir — the `.opencode/` agents no longer use `{file:...}` syntax.
